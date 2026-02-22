@@ -1,0 +1,165 @@
+-- ==========================================
+-- EXTENDED TEST DATA SCRIPT
+-- Include Faculty, Student, Subjects, Enrollments, Attendance
+-- Safe to run multiple times (Idempotent)
+-- ==========================================
+
+-- 1. UPSERT FACULTY USER & PROFILE
+-- REPLACE '9981066d-35dc-48cf-8e93-6ea70a2099a1' with your actual Faculty UID
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM users WHERE id = '9981066d-35dc-48cf-8e93-6ea70a2099a1') THEN
+        INSERT INTO public.users (id, email, password_hash, full_name, role)
+        VALUES (
+            '9981066d-35dc-48cf-8e93-6ea70a2099a1', 
+            'faculty@test.com', 
+            'hashed_password_placeholder', 
+            'Dr. Test Faculty', 
+            'faculty'
+        );
+    END IF;
+END $$;
+
+INSERT INTO public.faculty (id, employee_id, department, phone)
+VALUES (
+    '9981066d-35dc-48cf-8e93-6ea70a2099a1', 
+    'FAC001', 
+    'Computer Science', 
+    '1234567890'
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- 2. UPSERT STUDENT USER & PROFILE
+-- REPLACE '0bfb7783-2ffb-420e-8023-4f455c78ac08' with your actual Student UID
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM users WHERE id = '0bfb7783-2ffb-420e-8023-4f455c78ac08') THEN
+        INSERT INTO public.users (id, email, password_hash, full_name, role)
+        VALUES (
+            '0bfb7783-2ffb-420e-8023-4f455c78ac08', 
+            'student@test.com', 
+            'hashed_password_placeholder', 
+            'Test Student', 
+            'student'
+        );
+    END IF;
+END $$;
+
+INSERT INTO public.students (id, roll_number, enrollment_year, semester, department, phone)
+VALUES (
+    '0bfb7783-2ffb-420e-8023-4f455c78ac08', 
+    'ST2024001', 
+    2024, 
+    1, 
+    'Computer Science', 
+    '9876543210'
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- 3. UPSERT SUBJECTS
+-- Subject 1: CS101
+INSERT INTO public.subjects (subject_code, subject_name, faculty_id, semester, department, schedule)
+VALUES (
+    'CS101', 
+    'Intro to Programming', 
+    '9981066d-35dc-48cf-8e93-6ea70a2099a1', 
+    1, 
+    'Computer Science', 
+    'Mon 10:00 AM'
+)
+ON CONFLICT (subject_code) DO NOTHING;
+
+-- Subject 2: CS102 (New)
+INSERT INTO public.subjects (subject_code, subject_name, faculty_id, semester, department, schedule)
+VALUES (
+    'CS102', 
+    'Data Structures', 
+    '9981066d-35dc-48cf-8e93-6ea70a2099a1', 
+    1, 
+    'Computer Science', 
+    'Tue 11:30 AM'
+)
+ON CONFLICT (subject_code) DO NOTHING;
+
+-- Subject 3: CS103 (New)
+INSERT INTO public.subjects (subject_code, subject_name, faculty_id, semester, department, schedule)
+VALUES (
+    'CS103', 
+    'Database Systems', 
+    '9981066d-35dc-48cf-8e93-6ea70a2099a1', 
+    1, 
+    'Computer Science', 
+    'Wed 02:00 PM'
+)
+ON CONFLICT (subject_code) DO NOTHING;
+
+-- 4. UPSERT ENROLLMENTS
+-- Enroll Student in CS101
+INSERT INTO public.enrollments (student_id, subject_id)
+VALUES (
+    '0bfb7783-2ffb-420e-8023-4f455c78ac08',
+    (SELECT id FROM subjects WHERE subject_code = 'CS101' LIMIT 1)
+)
+ON CONFLICT (student_id, subject_id) DO NOTHING;
+
+-- Enroll Student in CS102
+INSERT INTO public.enrollments (student_id, subject_id)
+VALUES (
+    '0bfb7783-2ffb-420e-8023-4f455c78ac08',
+    (SELECT id FROM subjects WHERE subject_code = 'CS102' LIMIT 1)
+)
+ON CONFLICT (student_id, subject_id) DO NOTHING;
+
+-- Enroll Student in CS103
+INSERT INTO public.enrollments (student_id, subject_id)
+VALUES (
+    '0bfb7783-2ffb-420e-8023-4f455c78ac08',
+    (SELECT id FROM subjects WHERE subject_code = 'CS103' LIMIT 1)
+)
+ON CONFLICT (student_id, subject_id) DO NOTHING;
+
+-- 5. UPSERT ATTENDANCE RECORDS (Past Data)
+-- CS101 Records
+INSERT INTO public.attendance_records (student_id, subject_id, date, status, marked_by)
+VALUES 
+(
+    '0bfb7783-2ffb-420e-8023-4f455c78ac08',
+    (SELECT id FROM subjects WHERE subject_code = 'CS101' LIMIT 1),
+    CURRENT_DATE - INTERVAL '7 days', -- Last week
+    'present',
+    '9981066d-35dc-48cf-8e93-6ea70a2099a1'
+),
+(
+    '0bfb7783-2ffb-420e-8023-4f455c78ac08',
+    (SELECT id FROM subjects WHERE subject_code = 'CS101' LIMIT 1),
+    CURRENT_DATE - INTERVAL '14 days', -- 2 weeks ago
+    'present',
+    '9981066d-35dc-48cf-8e93-6ea70a2099a1'
+),
+(
+    '0bfb7783-2ffb-420e-8023-4f455c78ac08',
+    (SELECT id FROM subjects WHERE subject_code = 'CS101' LIMIT 1),
+    CURRENT_DATE - INTERVAL '21 days', -- 3 weeks ago
+    'absent',
+    '9981066d-35dc-48cf-8e93-6ea70a2099a1'
+)
+ON CONFLICT (student_id, subject_id, date) DO NOTHING;
+
+-- CS102 Records
+INSERT INTO public.attendance_records (student_id, subject_id, date, status, marked_by)
+VALUES 
+(
+    '0bfb7783-2ffb-420e-8023-4f455c78ac08',
+    (SELECT id FROM subjects WHERE subject_code = 'CS102' LIMIT 1),
+    CURRENT_DATE - INTERVAL '5 days',
+    'present',
+    '9981066d-35dc-48cf-8e93-6ea70a2099a1'
+),
+(
+    '0bfb7783-2ffb-420e-8023-4f455c78ac08',
+    (SELECT id FROM subjects WHERE subject_code = 'CS102' LIMIT 1),
+    CURRENT_DATE - INTERVAL '12 days',
+    'late',
+    '9981066d-35dc-48cf-8e93-6ea70a2099a1'
+)
+ON CONFLICT (student_id, subject_id, date) DO NOTHING;
